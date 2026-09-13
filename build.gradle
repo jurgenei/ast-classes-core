@@ -1,0 +1,33 @@
+plugins {
+    id 'java-library'
+    id 'application'
+}
+
+group = 'name.jurgenei.ast'
+version = '0.1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.antlr:antlr4-runtime:4.13.2'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.3'
+}
+
+application {
+    mainClass = 'name.jurgenei.ast.core.Main'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
