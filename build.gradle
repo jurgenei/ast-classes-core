@@ -8,6 +8,8 @@ plugins {
     id 'jacoco'
     id 'maven-publish'
     id 'signing'
+    id 'org.owasp.dependencycheck' version '13.0.0'
+    id 'com.github.spotbugs' version '6.1.0'
 }
 
 group = 'name.jurgenei.ast'
@@ -30,6 +32,7 @@ dependencies {
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.3'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.3'
+    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.14.0'
 }
 
 application {
@@ -111,6 +114,31 @@ tasks.withType(Javadoc).configureEach {
     options.addStringOption('Xdoclint:none', '-quiet')
 }
 
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
+    ignoreFailures = providers.gradleProperty('spotbugsIgnoreFailures')
+            .map { it.toBoolean() }
+            .orElse(true)
+            .get()
+    effort = com.github.spotbugs.snom.Effort.valueOf('DEFAULT')
+    reportLevel = com.github.spotbugs.snom.Confidence.valueOf('MEDIUM')
+    excludeFilter = file('spotbugs-exclude.xml')
+    reports {
+        html.required = true
+        xml.required = false
+    }
+}
+
+dependencyCheck {
+    formats = ['HTML', 'JSON', 'XML']
+    failBuildOnCVSS = 7.0
+    suppressionFile = 'dependency-check-suppressions.xml'
+    skipConfigurations = ['spotbugs', 'spotbugsPlugins']
+
+    nvd {
+        apiKey = providers.gradleProperty('org.owasp.dependencycheck.nvd.api.key').orNull ?: System.getenv('NVD_API_KEY')
+    }
+}
+
 tasks.named('test') {
     finalizedBy tasks.named('jacocoTestReport')
 }
@@ -150,6 +178,17 @@ tasks.register('coverage') {
 
 tasks.named('check') {
     dependsOn tasks.named('jacocoTestCoverageVerification')
+}
+
+tasks.register('allSecurityChecks') {
+    group = 'verification'
+    description = 'Run all security checks (Dependency-Check and SpotBugs).'
+    dependsOn tasks.named('check')
+    dependsOn tasks.named('spotbugsMain')
+    def dependencyCheckTask = tasks.findByName('dependencyCheckAnalyze') ?: tasks.findByName('dependencyCheck')
+    if (dependencyCheckTask != null) {
+        dependsOn dependencyCheckTask
+    }
 }
 
 def stageCentralBundleRepo = tasks.register('stageCentralBundleRepo', Sync) {
@@ -206,4 +245,3 @@ tasks.register('packageCentralBundle', Zip) {
     destinationDirectory = layout.buildDirectory.dir('central-bundle').get().asFile
     from layout.buildDirectory.dir('central-staging-repo')
 }
-
