@@ -31,7 +31,7 @@ dependencies {
     implementation 'org.antlr:antlr4-runtime:4.13.2'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.3'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:6.1.3'
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.14.0'
 }
 
