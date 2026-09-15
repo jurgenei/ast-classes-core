@@ -1,5 +1,15 @@
 # ast-classes-core
 
+[![Build](https://github.com/jurgenei/ast-classes-core/actions/workflows/ci.yml/badge.svg)](https://github.com/jurgenei/ast-classes-core/actions/workflows/ci.yml)
+[![Release](https://github.com/jurgenei/ast-classes-core/actions/workflows/release.yml/badge.svg)](https://github.com/jurgenei/ast-classes-core/actions/workflows/release.yml)
+[![Coverage CI](https://github.com/jurgenei/ast-classes-core/actions/workflows/coverage.yml/badge.svg)](https://github.com/jurgenei/ast-classes-core/actions/workflows/coverage.yml)
+[![CodeQL](https://github.com/jurgenei/ast-classes-core/actions/workflows/codeql.yml/badge.svg)](https://github.com/jurgenei/ast-classes-core/actions/workflows/codeql.yml)
+[![Coverage](https://codecov.io/gh/jurgenei/ast-classes-core/graph/badge.svg?branch=main)](https://codecov.io/gh/jurgenei/ast-classes-core?branch=main)
+[![Maven Central](https://img.shields.io/maven-central/v/name.jurgenei.ast/ast-classes-core.svg)](https://search.maven.org/artifact/name.jurgenei.ast/ast-classes-core)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Java](https://img.shields.io/badge/java-21+-green.svg)](https://www.oracle.com/java/)
+[![Gradle](https://img.shields.io/badge/gradle-9.5+-blue.svg)](https://gradle.org/)
+
 ANTLR Grammar -> Model -> AST Classes core library.
 
 Focus v0.1:
@@ -29,6 +39,30 @@ In this workspace, command used:
 
 ```zsh
 /Users/cs79en/Developer/GitHub/gradle/gradle-antlr-plugin/gradlew -p /Users/cs79en/Developer/GitHub/gradle/ast-classes-core test --no-daemon
+```
+
+## Maven Central publishing
+
+Local prereqs:
+
+1. `mavenCentralUsername` + `mavenCentralPassword` in `~/.gradle/gradle.properties`
+2. Signing key configured (`signingKey` + `signingPassword`, optional `signingKeyId`) or local `gpg` keyring
+3. Release version (remove `-SNAPSHOT`)
+
+Example `~/.gradle/gradle.properties`:
+
+```properties
+mavenCentralUsername=YOUR_MAVEN_CENTRAL_TOKEN_USERNAME
+mavenCentralPassword=YOUR_MAVEN_CENTRAL_TOKEN_PASSWORD
+signingKey=YOUR_ASCII_ARMORED_PRIVATE_KEY
+signingPassword=YOUR_SIGNING_KEY_PASSPHRASE
+signingKeyId=YOUR_GPG_KEY_ID
+```
+
+Build publishable central bundle:
+
+```bash
+./gradlew clean packageCentralBundle
 ```
 
 ## Run tiny demo

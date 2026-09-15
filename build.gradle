@@ -1,6 +1,13 @@
+import org.gradle.api.GradleException
+
+import java.security.MessageDigest
+
 plugins {
     id 'java-library'
     id 'application'
+    id 'jacoco'
+    id 'maven-publish'
+    id 'signing'
 }
 
 group = 'name.jurgenei.ast'
@@ -11,6 +18,7 @@ java {
         languageVersion = JavaLanguageVersion.of(21)
     }
     withSourcesJar()
+    withJavadocJar()
 }
 
 repositories {
@@ -28,6 +36,174 @@ application {
     mainClass = 'name.jurgenei.ast.core.Main'
 }
 
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifactId = 'ast-classes-core'
+
+            pom {
+                name = 'ast-classes-core'
+                description = 'ANTLR grammar-model to AST-classes derivation core library'
+                url = 'https://github.com/jurgenei/ast-classes-core'
+
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/license/mit'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'jurgenei'
+                        name = 'Jurgen Hildebrand'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git:https://github.com/jurgenei/ast-classes-core.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/jurgenei/ast-classes-core.git'
+                    url = 'https://github.com/jurgenei/ast-classes-core'
+                }
+            }
+        }
+    }
+
+    repositories {
+        mavenLocal()
+        maven {
+            name = 'sonatype'
+            def releasesRepoUrl = 'https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/'
+            def snapshotsRepoUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+            url = uri(version.toString().endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl)
+            credentials {
+                username = providers.gradleProperty('mavenCentralUsername').orNull
+                password = providers.gradleProperty('mavenCentralPassword').orNull
+            }
+        }
+    }
+}
+
+signing {
+    def signingKey = providers.gradleProperty('signingKey').orNull
+    def signingPassword = providers.gradleProperty('signingPassword').orNull
+    def signingKeyId = providers.gradleProperty('signingKeyId').orNull
+
+    if (signingKey && signingPassword) {
+        if (signingKeyId) {
+            useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
+        } else {
+            useInMemoryPgpKeys(signingKey, signingPassword)
+        }
+    } else {
+        useGpgCmd()
+    }
+
+    sign publishing.publications
+}
+
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
 }
+
+tasks.withType(Javadoc).configureEach {
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+tasks.named('test') {
+    finalizedBy tasks.named('jacocoTestReport')
+}
+
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test')
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+}
+
+tasks.named('jacocoTestCoverageVerification') {
+    dependsOn tasks.named('jacocoTestReport')
+    violationRules {
+        rule {
+            element = 'BUNDLE'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.00
+            }
+        }
+    }
+}
+
+tasks.register('coverage') {
+    group = 'verification'
+    description = 'Runs tests, generates JaCoCo report, and verifies minimum coverage threshold.'
+    dependsOn tasks.named('jacocoTestCoverageVerification')
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('jacocoTestCoverageVerification')
+}
+
+def stageCentralBundleRepo = tasks.register('stageCentralBundleRepo', Sync) {
+    dependsOn tasks.named('publishMavenJavaPublicationToMavenLocal')
+
+    def artifactBaseDir = file("${System.getProperty('user.home')}/.m2/repository/name/jurgenei/ast/ast-classes-core")
+    def artifactVersionDir = file("${artifactBaseDir}/${project.version}")
+    from(artifactVersionDir)
+    into(layout.buildDirectory.dir("central-staging-repo/name/jurgenei/ast/ast-classes-core/${project.version}"))
+
+    doFirst {
+        if (!artifactVersionDir.exists()) {
+            throw new GradleException("Expected local Maven artifact version directory not found: ${artifactVersionDir}")
+        }
+    }
+}
+
+def generateCentralBundleChecksums = tasks.register('generateCentralBundleChecksums') {
+    dependsOn stageCentralBundleRepo
+    notCompatibleWithConfigurationCache('Generates checksum files by scanning staged output directory at execution time.')
+
+    doLast {
+        def stagedVersionDir = layout.buildDirectory.dir("central-staging-repo/name/jurgenei/ast/ast-classes-core/${project.version}").get().asFile
+        if (!stagedVersionDir.exists()) {
+            throw new GradleException("Expected staged version directory not found: ${stagedVersionDir}")
+        }
+
+        def checksum = { File input, String algorithm ->
+            MessageDigest digest = MessageDigest.getInstance(algorithm)
+            input.withInputStream { stream ->
+                byte[] buffer = new byte[8192]
+                int read
+                while ((read = stream.read(buffer)) >= 0) {
+                    digest.update(buffer, 0, read)
+                }
+            }
+            digest.digest().collect { String.format('%02x', it & 0xff) }.join('')
+        }
+
+        stagedVersionDir.eachFileRecurse { file ->
+            if (file.isFile() && !file.name.endsWith('.md5') && !file.name.endsWith('.sha1')) {
+                file.parentFile.toPath().resolve(file.name + '.md5').toFile().text = checksum(file, 'MD5') + System.lineSeparator()
+                file.parentFile.toPath().resolve(file.name + '.sha1').toFile().text = checksum(file, 'SHA-1') + System.lineSeparator()
+            }
+        }
+    }
+}
+
+tasks.register('packageCentralBundle', Zip) {
+    dependsOn generateCentralBundleChecksums
+    archiveBaseName = 'ast-classes-core'
+    archiveVersion = project.version.toString()
+    archiveClassifier = 'central-bundle'
+    destinationDirectory = layout.buildDirectory.dir('central-bundle').get().asFile
+    from layout.buildDirectory.dir('central-staging-repo')
+}
+
