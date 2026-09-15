@@ -12,8 +12,11 @@ plugins {
     id 'com.github.spotbugs' version '6.1.0'
 }
 
-group = 'name.jurgenei.ast'
+group = 'name.jurgenei'
 version = '0.1.0'
+
+def coreArtifactId = 'ast-classes-core'
+def groupPath = group.toString().replace('.', '/')
 
 java {
     toolchain {
@@ -43,7 +46,7 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            artifactId = 'ast-classes-core'
+            artifactId = coreArtifactId
 
             pom {
                 name = 'ast-classes-core'
@@ -194,10 +197,10 @@ tasks.register('allSecurityChecks') {
 def stageCentralBundleRepo = tasks.register('stageCentralBundleRepo', Sync) {
     dependsOn tasks.named('publishMavenJavaPublicationToMavenLocal')
 
-    def artifactBaseDir = file("${System.getProperty('user.home')}/.m2/repository/name/jurgenei/ast/ast-classes-core")
+    def artifactBaseDir = file("${System.getProperty('user.home')}/.m2/repository/${groupPath}/${coreArtifactId}")
     def artifactVersionDir = file("${artifactBaseDir}/${project.version}")
     from(artifactVersionDir)
-    into(layout.buildDirectory.dir("central-staging-repo/name/jurgenei/ast/ast-classes-core/${project.version}"))
+    into(layout.buildDirectory.dir("central-staging-repo/${groupPath}/${coreArtifactId}/${project.version}"))
 
     doFirst {
         if (!artifactVersionDir.exists()) {
@@ -211,7 +214,7 @@ def generateCentralBundleChecksums = tasks.register('generateCentralBundleChecks
     notCompatibleWithConfigurationCache('Generates checksum files by scanning staged output directory at execution time.')
 
     doLast {
-        def stagedVersionDir = layout.buildDirectory.dir("central-staging-repo/name/jurgenei/ast/ast-classes-core/${project.version}").get().asFile
+        def stagedVersionDir = layout.buildDirectory.dir("central-staging-repo/${groupPath}/${coreArtifactId}/${project.version}").get().asFile
         if (!stagedVersionDir.exists()) {
             throw new GradleException("Expected staged version directory not found: ${stagedVersionDir}")
         }
