@@ -76,10 +76,10 @@ public final class AstClassDeriver {
             final Map<String, GrammarRule> ruleByName,
             final Set<String> classNames,
             final List<AstInheritance> inheritances) {
-        if (!(body instanceof ChoiceNode choiceNode)) {
+        if (!(body instanceof ChoiceNode(List<GrammarNode> alternatives))) {
             return;
         }
-        for (GrammarNode alternative : choiceNode.alternatives()) {
+        for (GrammarNode alternative : alternatives) {
             final String childRuleName = unwrapDirectRuleRef(alternative);
             if (childRuleName == null) {
                 continue;
@@ -96,8 +96,8 @@ public final class AstClassDeriver {
     }
 
     private String unwrapDirectRuleRef(final GrammarNode node) {
-        if (node instanceof RuleRefNode refNode) {
-            return refNode.ruleName();
+        if (node instanceof RuleRefNode(String ruleName)) {
+            return ruleName;
         }
         if (node instanceof LabelNode labelNode) {
             return unwrapDirectRuleRef(labelNode.node());
@@ -115,40 +115,40 @@ public final class AstClassDeriver {
             collectLabelRelation(sourceClass, labelNode, inheritedCardinality, classNames, relations);
             return;
         }
-        if (node instanceof SequenceNode sequenceNode) {
-            for (GrammarNode child : sequenceNode.elements()) {
+        if (node instanceof SequenceNode(List<GrammarNode> elements)) {
+            for (GrammarNode child : elements) {
                 collectRelations(sourceClass, child, inheritedCardinality, classNames, relations);
             }
             return;
         }
-        if (node instanceof ChoiceNode choiceNode) {
-            for (GrammarNode child : choiceNode.alternatives()) {
+        if (node instanceof ChoiceNode(List<GrammarNode> alternatives)) {
+            for (GrammarNode child : alternatives) {
                 collectRelations(sourceClass, child, inheritedCardinality, classNames, relations);
             }
             return;
         }
-        if (node instanceof OptionalNode optionalNode) {
+        if (node instanceof OptionalNode(GrammarNode node3)) {
             collectRelations(
                     sourceClass,
-                    optionalNode.node(),
+                    node3,
                     Cardinality.combine(inheritedCardinality, Cardinality.OPTIONAL),
                     classNames,
                     relations);
             return;
         }
-        if (node instanceof RepeatNode repeatNode) {
+        if (node instanceof RepeatNode(GrammarNode node2)) {
             collectRelations(
                     sourceClass,
-                    repeatNode.node(),
+                    node2,
                     Cardinality.combine(inheritedCardinality, Cardinality.STAR),
                     classNames,
                     relations);
             return;
         }
-        if (node instanceof Repeat1Node repeat1Node) {
+        if (node instanceof Repeat1Node(GrammarNode node1)) {
             collectRelations(
                     sourceClass,
-                    repeat1Node.node(),
+                    node1,
                     Cardinality.combine(inheritedCardinality, Cardinality.PLUS),
                     classNames,
                     relations);
@@ -178,22 +178,22 @@ public final class AstClassDeriver {
     }
 
     private LabelTarget resolveLabelTarget(final GrammarNode node, final Cardinality inheritedCardinality) {
-        if (node instanceof RuleRefNode refNode) {
-            return new LabelTarget(refNode.ruleName(), inheritedCardinality);
+        if (node instanceof RuleRefNode(String ruleName)) {
+            return new LabelTarget(ruleName, inheritedCardinality);
         }
-        if (node instanceof OptionalNode optionalNode) {
+        if (node instanceof OptionalNode(GrammarNode node3)) {
             return resolveLabelTarget(
-                    optionalNode.node(),
+                    node3,
                     Cardinality.combine(inheritedCardinality, Cardinality.OPTIONAL));
         }
-        if (node instanceof RepeatNode repeatNode) {
+        if (node instanceof RepeatNode(GrammarNode node2)) {
             return resolveLabelTarget(
-                    repeatNode.node(),
+                    node2,
                     Cardinality.combine(inheritedCardinality, Cardinality.STAR));
         }
-        if (node instanceof Repeat1Node repeat1Node) {
+        if (node instanceof Repeat1Node(GrammarNode node1)) {
             return resolveLabelTarget(
-                    repeat1Node.node(),
+                    node1,
                     Cardinality.combine(inheritedCardinality, Cardinality.PLUS));
         }
         if (node instanceof LabelNode nestedLabel) {
@@ -212,20 +212,20 @@ public final class AstClassDeriver {
         if (node instanceof LabelNode labelNode) {
             return isLiteralOnly(labelNode.node());
         }
-        if (node instanceof OptionalNode optionalNode) {
-            return isLiteralOnly(optionalNode.node());
+        if (node instanceof OptionalNode(GrammarNode node3)) {
+            return isLiteralOnly(node3);
         }
-        if (node instanceof RepeatNode repeatNode) {
-            return isLiteralOnly(repeatNode.node());
+        if (node instanceof RepeatNode(GrammarNode node2)) {
+            return isLiteralOnly(node2);
         }
-        if (node instanceof Repeat1Node repeat1Node) {
-            return isLiteralOnly(repeat1Node.node());
+        if (node instanceof Repeat1Node(GrammarNode node1)) {
+            return isLiteralOnly(node1);
         }
-        if (node instanceof SequenceNode sequenceNode) {
-            return sequenceNode.elements().stream().allMatch(this::isLiteralOnly);
+        if (node instanceof SequenceNode(List<GrammarNode> elements)) {
+            return elements.stream().allMatch(this::isLiteralOnly);
         }
-        if (node instanceof ChoiceNode choiceNode) {
-            return choiceNode.alternatives().stream().allMatch(this::isLiteralOnly);
+        if (node instanceof ChoiceNode(List<GrammarNode> alternatives)) {
+            return alternatives.stream().allMatch(this::isLiteralOnly);
         }
         return false;
     }
