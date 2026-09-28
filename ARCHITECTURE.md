@@ -1,7 +1,7 @@
-# Architecture 
+# Architecture Overview ast-classes-core
 
 ```mermaid
-flowchart TD
+flowchart LR
 
 subgraph group_input["Grammar Input"]
   node_pipeline["Pipeline API"]
@@ -24,18 +24,18 @@ end
 node_user(("Library caller"))
 node_parse_tree["ANTLR parse tree"]
 
-node_user -->|"calls"| node_pipeline
 node_user -->|"provides"| node_parse_tree
+node_user -->|"calls"| node_pipeline
 node_pipeline -->|"invokes map"| node_mapper
 node_mapper -->|"maps"| node_parse_tree
 node_mapper -->|"produces"| node_grammar_model
 node_pipeline -->|"accepts directly"| node_grammar_model
 node_grammar_model -->|"contains"| node_grammar_nodes
-node_pipeline -->|"invokes derive"| node_deriver
 node_deriver -->|"reads"| node_grammar_model
 node_deriver -->|"combines"| node_cardinality
 node_deriver -->|"produces"| node_ast_model
 node_pipeline -->|"returns"| node_ast_model
+node_pipeline -->|"invokes derive"| node_deriver
 node_user -->|"calls"| node_writer
 node_writer -->|"reads"| node_ast_model
 node_writer -->|"renders"| node_sexpr
